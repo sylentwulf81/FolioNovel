@@ -4,7 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { X, Download, Copy, Trash2, Sliders, Cloud, Check, Loader2 } from 'lucide-react';
 import { Folio, NovelStatus } from '@/lib/types';
-import { exportNovelAsRTF, exportNovelAsJSON } from '@/lib/db';
+import { exportNovelAsRTF, exportNovelAsJSON, exportNovelAsPDF } from '@/lib/db';
+import { novelPdfFileName } from '@/lib/pdfExport';
 
 interface NovelSettingsDrawerProps {
   isOpen: boolean;
@@ -38,6 +39,30 @@ export const NovelSettingsDrawer: React.FC<NovelSettingsDrawerProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
+
+  const handleDownloadPDF = async () => {
+    try {
+      setIsExporting(true);
+      const bytes = await exportNovelAsPDF(folio.id);
+      const copy = new ArrayBuffer(bytes.byteLength);
+      new Uint8Array(copy).set(bytes);
+      const blob = new Blob([copy], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = novelPdfFileName(folio.title);
+      a.click();
+      URL.revokeObjectURL(url);
+      setExportFeedback('Downloaded PDF');
+      setTimeout(() => setExportFeedback(null), 3000);
+    } catch (err) {
+      console.error('PDF export error:', err);
+      setExportFeedback('PDF export failed');
+      setTimeout(() => setExportFeedback(null), 3000);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Export as Rich Text (.rtf) - Preserves formatting (Bold, Italic, Underline, Scene breaks)
   const handleDownloadRTF = async () => {
@@ -170,11 +195,11 @@ export const NovelSettingsDrawer: React.FC<NovelSettingsDrawerProps> = ({
                   )}
                 </div>
 
-                {/* Primary Download: Rich Text */}
+                {/* Primary Download: PDF, which chat tools and editors will accept */}
                 <button
                   type="button"
-                  id="download-novel-rtf-btn"
-                  onClick={handleDownloadRTF}
+                  id="download-novel-pdf-btn"
+                  onClick={handleDownloadPDF}
                   disabled={isExporting}
                   className="w-full flex items-center justify-between p-3 rounded-lg bg-[#F4EFE6] hover:bg-[#EAE3D6]/70 border border-[#E7E0D4] text-left transition-colors cursor-pointer group disabled:opacity-50"
                 >
@@ -182,16 +207,28 @@ export const NovelSettingsDrawer: React.FC<NovelSettingsDrawerProps> = ({
                     <div className="flex items-center gap-2">
                       <Download className="w-4 h-4 text-[#6B2D2D] flex-shrink-0" />
                       <span className="text-xs font-medium text-[#1C1917]">
-                        Download Rich Text (.rtf)
+                        Download PDF
                       </span>
                     </div>
                     <p className="text-[11px] text-[#78716C] mt-1 pl-6">
-                      Preserves bold, italics, underlines, and scene breaks for Word, Pages, and Docs.
+                      Readable pages for chat tools and editors. The file name includes the time of export.
                     </p>
                   </div>
                   <span className="text-[10px] uppercase tracking-wider text-[#78716C] bg-[#EAE3D6]/60 px-1.5 py-0.5 rounded flex-shrink-0">
-                    RTF
+                    PDF
                   </span>
+                </button>
+
+                {/* Secondary Download: Rich Text */}
+                <button
+                  type="button"
+                  id="download-novel-rtf-btn"
+                  onClick={handleDownloadRTF}
+                  disabled={isExporting}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-[#EAE3D6]/40 text-left transition-colors cursor-pointer group disabled:opacity-50 text-xs text-[#57534E] hover:text-[#1C1917]"
+                >
+                  <span className="text-xs">Download Rich Text (.rtf)</span>
+                  <span className="text-[10px] text-[#78716C]">.rtf</span>
                 </button>
 
                 {/* Secondary Download: JSON Raw Backup */}

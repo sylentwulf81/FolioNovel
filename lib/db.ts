@@ -1,5 +1,6 @@
 import { Folio, Chapter, MetaSettings, DailyStat, BlockNode } from './types';
 import { generateNovelRTF } from './rtfExport';
+import { generateNovelPDF } from './pdfExport';
 
 const DB_NAME = 'folio_ink_db';
 const DB_VERSION = 1;
@@ -497,6 +498,13 @@ export async function exportNovelAsRTF(novelId: string): Promise<string> {
   if (!folio) throw new Error('Novel not found');
   const chapters = await getChaptersForNovel(novelId);
   return generateNovelRTF(folio, chapters);
+}
+
+export async function exportNovelAsPDF(novelId: string): Promise<Uint8Array> {
+  const folio = await getFolio(novelId);
+  if (!folio) throw new Error('Novel not found');
+  const chapters = await getChaptersForNovel(novelId);
+  return generateNovelPDF(folio, chapters);
 }
 
 export async function importData(jsonString: string): Promise<void> {
